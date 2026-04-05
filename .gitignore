@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+llm_serve_env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Reports (auto-generated, user-specific)
+reports/
+
+# Claude config
+.claude/
+
+# Models (too large for git)
+models/
+
+# Temp files
+*.log
+*.tmp

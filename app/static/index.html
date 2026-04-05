@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Serving Algorithms - GPU Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="dashboard">
+
+    <!-- Benchmark Sidebar -->
+    <aside class="sidebar" id="benchmarkSidebar">
+      <h2 class="sidebar-title">Benchmarks</h2>
+      <div class="sidebar-subtitle">Total tok/s</div>
+      <div id="benchmarkList" class="benchmark-list"></div>
+    </aside>
+
+    <!-- Left Panel -->
+    <main class="left-panel">
+
+      <!-- GPU Animation Panel -->
+      <section class="panel gpu-animation-panel">
+        <div class="panel-header">
+          <h2>GPU Processing Pipeline</h2>
+          <span class="algorithm-badge" id="currentAlgorithmLabel">Naive Sequential</span>
+        </div>
+        <canvas id="gpuCanvas"></canvas>
+      </section>
+
+      <!-- GPU Telemetry Panel -->
+      <section class="panel telemetry-panel">
+        <div class="panel-header">
+          <h2>GPU Telemetry (Live)</h2>
+          <span class="telemetry-status" id="telemetryStatus">Waiting...</span>
+        </div>
+        <div class="telemetry-grid" id="telemetryGrid">
+          <div class="telemetry-item">
+            <span class="telemetry-label">GPU Utilization</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar gpu-util-bar" id="barGpuUtil" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valGpuUtil">0%</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Memory Usage</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar mem-bar" id="barMemUsage" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valMemUsage">0 / 0 MB</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Memory Utilization</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar mem-util-bar" id="barMemUtil" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valMemUtil">0%</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Power</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar power-bar" id="barPower" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valPower">0 / 0 W</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Temperature</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar temp-bar" id="barTemp" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valTemp">0 C</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Fan Speed</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar fan-bar" id="barFan" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valFan">0%</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">SM Clock</span>
+            <span class="telemetry-value telemetry-value-plain" id="valSmClock">0 MHz</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Mem Clock</span>
+            <span class="telemetry-value telemetry-value-plain" id="valMemClock">0 MHz</span>
+          </div>
+          <div class="telemetry-item">
+            <span class="telemetry-label">Mem BW Util</span>
+            <div class="telemetry-bar-wrap">
+              <div class="telemetry-bar bw-bar" id="barMemBw" style="width:0%"></div>
+            </div>
+            <span class="telemetry-value" id="valMemBw">--%</span>
+          </div>
+        </div>
+        <div class="user-throughput" id="userThroughput">
+          <div class="user-tps" data-user="0"><span class="user-dot" style="background:#FF6B6B"></span> User 0: <span id="tpsUser0">0.0</span> tok/s</div>
+          <div class="user-tps" data-user="1"><span class="user-dot" style="background:#4ECDC4"></span> User 1: <span id="tpsUser1">0.0</span> tok/s</div>
+          <div class="user-tps" data-user="2"><span class="user-dot" style="background:#45B7D1"></span> User 2: <span id="tpsUser2">0.0</span> tok/s</div>
+          <div class="user-tps" data-user="3"><span class="user-dot" style="background:#96CEB4"></span> User 3: <span id="tpsUser3">0.0</span> tok/s</div>
+        </div>
+      </section>
+
+      <!-- Evaluate Results (hidden until triggered) -->
+      <section class="evaluate-panel" id="evaluatePanel" style="display:none;">
+        <div class="evaluate-header">
+          <h3 class="evaluate-title">Algorithm Evaluation</h3>
+          <button class="evaluate-close" id="evaluateClose">&times;</button>
+        </div>
+        <div class="evaluate-body" id="evaluateBody">
+          <span class="evaluate-cursor"></span>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- Terminal Grid -->
+      <div class="terminal-grid">
+        <div class="terminal" id="terminal0">
+          <div class="terminal-header" style="border-color:#FF6B6B">
+            <span class="terminal-title" style="color:#FF6B6B">User 0</span>
+            <span class="terminal-tps" id="termTps0">0.0 tok/s</span>
+          </div>
+          <div class="terminal-body" id="termBody0"></div>
+          <div class="terminal-input-wrap">
+            <span class="terminal-prompt-char">&gt;</span>
+            <input type="text" class="terminal-input" id="termInput0" data-user="0" placeholder="Type a prompt..." autocomplete="off">
+          </div>
+        </div>
+        <div class="terminal" id="terminal1">
+          <div class="terminal-header" style="border-color:#4ECDC4">
+            <span class="terminal-title" style="color:#4ECDC4">User 1</span>
+            <span class="terminal-tps" id="termTps1">0.0 tok/s</span>
+          </div>
+          <div class="terminal-body" id="termBody1"></div>
+          <div class="terminal-input-wrap">
+            <span class="terminal-prompt-char">&gt;</span>
+            <input type="text" class="terminal-input" id="termInput1" data-user="1" placeholder="Type a prompt..." autocomplete="off">
+          </div>
+        </div>
+        <div class="terminal" id="terminal2">
+          <div class="terminal-header" style="border-color:#45B7D1">
+            <span class="terminal-title" style="color:#45B7D1">User 2</span>
+            <span class="terminal-tps" id="termTps2">0.0 tok/s</span>
+          </div>
+          <div class="terminal-body" id="termBody2"></div>
+          <div class="terminal-input-wrap">
+            <span class="terminal-prompt-char">&gt;</span>
+            <input type="text" class="terminal-input" id="termInput2" data-user="2" placeholder="Type a prompt..." autocomplete="off">
+          </div>
+        </div>
+        <div class="terminal" id="terminal3">
+          <div class="terminal-header" style="border-color:#96CEB4">
+            <span class="terminal-title" style="color:#96CEB4">User 3</span>
+            <span class="terminal-tps" id="termTps3">0.0 tok/s</span>
+          </div>
+          <div class="terminal-body" id="termBody3"></div>
+          <div class="terminal-input-wrap">
+            <span class="terminal-prompt-char">&gt;</span>
+            <input type="text" class="terminal-input" id="termInput3" data-user="3" placeholder="Type a prompt..." autocomplete="off">
+          </div>
+        </div>
+      </div>
+
+      <!-- Control Panel -->
+      <section class="control-panel">
+        <div class="control-row">
+          <div class="algo-selector" id="algoSelector">
+            <button class="algo-btn active" data-algo="naive" title="Process one user at a time sequentially">Naive</button>
+            <button class="algo-btn" data-algo="static_batch" title="Batch all users with padding to max length">Static</button>
+            <button class="algo-btn" data-algo="continuous_batch" title="Dynamically add/remove requests from batch">Continuous</button>
+            <button class="algo-btn" data-algo="paged_attention" title="Virtual memory paging for KV cache">Paged</button>
+            <button class="algo-btn" data-algo="quantized" title="4-bit quantized weights for reduced memory">Quantized</button>
+            <button class="algo-btn" data-algo="speculative" title="Draft model generates, main model verifies">Speculative</button>
+            <button class="algo-btn" data-algo="chunked_prefill" title="Chunk prefill to interleave with decode">Chunked</button>
+          </div>
+        </div>
+        <div class="control-row control-row-bottom">
+          <div class="btn-with-tooltip">
+            <button class="auto-btn" id="autoBtn">Auto-Start</button>
+            <div class="tooltip-box">Run the currently selected algorithm continuously with random prompts for all 4 users. Click again to stop.</div>
+          </div>
+          <div class="btn-with-tooltip">
+            <button class="benchmark-all-btn" id="benchmarkAllBtn">Benchmark All</button>
+            <div class="tooltip-box">Run ALL 7 algorithms sequentially (5 runs each, 30s cooldown between). Captures GPU telemetry and auto-evaluates with the LLM at the end.</div>
+          </div>
+          <div class="btn-with-tooltip">
+            <button class="evaluate-btn" id="evaluateBtn">Evaluate</button>
+            <div class="tooltip-box">Send all captured telemetry data to the Qwen LLM for a cost/performance analysis and cloud deployment recommendation.</div>
+          </div>
+          <a class="report-btn" id="reportBtn" href="/report/latest" target="_blank">View Report</a>
+          <div class="btn-with-tooltip records-wrap">
+            <button class="records-btn" id="recordsBtn">Records</button>
+            <div class="records-dropdown" id="recordsDropdown"></div>
+            <div class="tooltip-box">View all previously saved benchmark reports.</div>
+          </div>
+          <button class="theme-toggle" id="themeToggle" title="Toggle light/dark mode">&#9790;</button>
+          <div class="status-indicator" id="statusIndicator">
+            <span class="status-dot" id="statusDot"></span>
+            <span id="statusText">Connecting...</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </div>
+
+  <!-- Benchmark Progress Overlay -->
+  <div class="benchmark-overlay" id="benchmarkOverlay" style="display:none;">
+    <div class="benchmark-overlay-content">
+      <h3 id="benchOverlayTitle">Benchmarking...</h3>
+      <div class="bench-progress-info">
+        <span id="benchAlgoLabel">Naive Sequential</span>
+        <span id="benchRunLabel">Run 1/5</span>
+      </div>
+      <div class="bench-progress-bar-wrap">
+        <div class="bench-progress-bar" id="benchProgressBar" style="width:0%"></div>
+      </div>
+      <div class="bench-progress-detail" id="benchProgressDetail"></div>
+      <button class="bench-abort-btn" id="benchAbortBtn">Abort</button>
+    </div>
+  </div>
+
+  <!-- Results Dashboard (full-width modal) -->
+  <div class="results-dashboard" id="resultsDashboard" style="display:none;">
+    <div class="results-inner">
+      <div class="results-header">
+        <h2>Algorithm Benchmark Results</h2>
+        <button class="results-close" id="resultsClose">&times;</button>
+      </div>
+      <div class="results-body">
+        <div class="results-chart-wrap">
+          <canvas id="resultsChart" width="700" height="220"></canvas>
+        </div>
+        <div class="results-table-wrap">
+          <table class="results-table" id="resultsTable">
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Avg TPS</th>
+                <th>GPU Util %</th>
+                <th>VRAM MB</th>
+                <th>Power W</th>
+                <th>Temp C</th>
+                <th>Runs</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTableBody"></tbody>
+          </table>
+        </div>
+        <div class="results-llm-wrap">
+          <h3 class="results-llm-title">LLM Cost Analysis</h3>
+          <div class="results-llm-body" id="resultsLlmBody">
+            <span class="evaluate-cursor"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

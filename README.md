@@ -16,6 +16,10 @@ This project runs a **Qwen3.5-4B** language model on your local NVIDIA GPU via *
 
 ![Benchmark Results](img%20(2).png)
 
+## Algorithms Explained
+
+For a deep technical walkthrough of every algorithm — with diagrams, math, and analogies that any engineer can follow — see **[Algorithms Explained (Full Guide)](algo_explanation.md)**.
+
 ## Algorithms Implemented
 
 | Algorithm | What It Does | Key Insight |
